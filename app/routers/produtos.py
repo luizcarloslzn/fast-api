@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from app.models import Produto
 from app.database import get_db
 import aiosqlite
@@ -7,11 +7,29 @@ router = APIRouter(prefix="/produtos", tags=["Produtos"])
 
 
 @router.get("/")
-async def listar(db: aiosqlite.Connection = Depends(get_db)):
-    cursor = await db.execute("SELECT * FROM produtos")
-    produtos = await cursor.fetchall()
-    return [dict(row) for row in produtos]
+async def listar(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    offset = (page - 1) * limit
 
+    cursor = await db.execute(
+        "SELECT * FROM produtos LIMIT ? OFFSET ?",
+        (limit, offset)
+    )
+    produtos = await cursor.fetchall()
+
+    cursor_total = await db.execute("SELECT COUNT(*) FROM produtos")
+    total = (await cursor_total.fetchone())[0]
+
+    return {
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "total_pages": (total + limit - 1) // limit,
+        "data": [dict(row) for row in produtos]
+    }
 
 @router.post("/")
 async def criar(produto: Produto, db: aiosqlite.Connection = Depends(get_db)):
