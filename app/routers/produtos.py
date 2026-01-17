@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
-from app.models import Produto
+from app.models.produtos import Produto
 from app.database import get_db
 import aiosqlite
 
